@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">BLDC</string>
+    <string name="ERROR">ERROR</string>
+    <string name="No_Permission">No Permission</string>
+</resources>
