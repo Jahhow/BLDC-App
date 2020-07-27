@@ -1,15 +1,21 @@
 package c.jahhow.bldc;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.IOException;
@@ -18,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
     static final String TAG = MainActivity.class.getSimpleName();
     static final String PATH_NAME = "/dev/null";
     static final int REQUEST_CODE_MIC = 37189;
+    static final int REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY = 11947;
     TextView tx;
 
     final Thread thr = new Thread(new Runnable() {
@@ -67,6 +74,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         tx = findViewById(R.id.tx);
         thr.start();
+        Button bt = findViewById(R.id.button);
+        bt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivityForResult(new Intent(v.getContext(), SelectMotorActivity.class), REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY);
+            }
+        });
     }
 
     @Override
@@ -136,6 +150,23 @@ public class MainActivity extends AppCompatActivity {
                 //e.printStackTrace();
                 recorder = null;
                 tx.setText(R.string.ERROR);
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY) {
+            if (resultCode == RESULT_OK) {
+                if (data != null) {
+                    Parcelable parcelableExtra = data.getParcelableExtra(SelectMotorActivity.BT_DEVICE);
+                    if (parcelableExtra instanceof BluetoothDevice) {
+                        BluetoothDevice bluetoothDevice = (BluetoothDevice) parcelableExtra;
+                        setTitle(bluetoothDevice.getName());
+
+                    }
+                }
             }
         }
     }

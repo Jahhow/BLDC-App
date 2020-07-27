@@ -2,4 +2,5 @@
     <string name="app_name">BLDC</string>
     <string name="ERROR">ERROR</string>
     <string name="No_Permission">No Permission</string>
+    <string name="select_motor">Select Motor</string>
 </resources>
