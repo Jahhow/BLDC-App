@@ -5,9 +5,11 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaRecorder;
@@ -16,9 +18,11 @@ import android.os.Parcelable;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 public class MainActivity extends AppCompatActivity {
     static final String TAG = MainActivity.class.getSimpleName();
@@ -26,7 +30,8 @@ public class MainActivity extends AppCompatActivity {
     static final int REQUEST_CODE_MIC = 37189;
     static final int REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY = 11947;
     TextView tx;
-
+    SeekBar seekBar;
+    MainViewModel viewModel;
     final Thread thr = new Thread(new Runnable() {
         @Override
         public void run() {
@@ -73,6 +78,34 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tx = findViewById(R.id.tx);
+        seekBar = findViewById(R.id.seekBar);
+        seekBar.setVisibility(View.INVISIBLE);
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                OutputStream outputStream = viewModel.outputStream;
+                if (outputStream != null) {
+                    try {
+                        outputStream.write(progress);
+                    } catch (IOException e) {
+                        //e.printStackTrace();
+                        disconnect();
+                    }
+                } else {
+                    disconnect();
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
         thr.start();
         Button bt = findViewById(R.id.button);
         bt.setOnClickListener(new View.OnClickListener() {
@@ -81,6 +114,8 @@ public class MainActivity extends AppCompatActivity {
                 startActivityForResult(new Intent(v.getContext(), SelectMotorActivity.class), REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY);
             }
         });
+        viewModel = new ViewModelProvider(this).get(MainViewModel.class);
+        viewModel.mainActivity = this;
     }
 
     @Override
@@ -164,10 +199,24 @@ public class MainActivity extends AppCompatActivity {
                     if (parcelableExtra instanceof BluetoothDevice) {
                         BluetoothDevice bluetoothDevice = (BluetoothDevice) parcelableExtra;
                         setTitle(bluetoothDevice.getName());
-
+                        viewModel.connect(bluetoothDevice);
                     }
                 }
             }
         }
+    }
+
+    void onConnected() {
+        seekBar.setVisibility(View.VISIBLE);
+    }
+
+    void disconnect() {
+        try {
+            viewModel.socket.close();
+        } catch (IOException e) {
+            //e.printStackTrace();
+        }
+        viewModel.outputStream = null;
+        seekBar.setVisibility(View.INVISIBLE);
     }
 }
