@@ -9,7 +9,6 @@ import androidx.lifecycle.ViewModelProvider;
 
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaRecorder;
@@ -32,52 +31,20 @@ public class MainActivity extends AppCompatActivity {
     TextView tx;
     SeekBar seekBar;
     MainViewModel viewModel;
-    final Thread thr = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            synchronized (thr) {
-                while (runThr) {
-                    if (recorder == null) {
-                        try {
-                            thr.wait();
-                        } catch (InterruptedException e) {
-                            //e.printStackTrace();
-                        }
-                        continue;
-                    }
-                    long timeoutMs;
-                    if (pauseThread) timeoutMs = 0;
-                    else {
-                        timeoutMs = 300;
-                        tx.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                tx.setText(String.valueOf(recorder.getMaxAmplitude()));
-                            }
-                        });
-                    }
-                    try {
-                        thr.wait(timeoutMs);
-                    } catch (InterruptedException e) {
-                        //e.printStackTrace();
-                    }
-                }
-                if (recorder != null) {
-                    recorder.stop();
-                    recorder = null;
-                }
-            }
-        }
-    });//lock
-    MediaRecorder recorder = null;//locked by thread thr
-    boolean pauseThread = true;  //locked by thread thr
-    boolean runThr = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        viewModel = new ViewModelProvider(this).get(MainViewModel.class);
         setContentView(R.layout.activity_main);
         tx = findViewById(R.id.tx);
+        Button bt = findViewById(R.id.button);
+        bt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivityForResult(new Intent(v.getContext(), SelectMotorActivity.class), REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY);
+            }
+        });
         seekBar = findViewById(R.id.seekBar);
         seekBar.setVisibility(View.INVISIBLE);
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -91,8 +58,6 @@ public class MainActivity extends AppCompatActivity {
                         //e.printStackTrace();
                         disconnect();
                     }
-                } else {
-                    disconnect();
                 }
             }
 
@@ -106,31 +71,22 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-        thr.start();
-        Button bt = findViewById(R.id.button);
-        bt.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivityForResult(new Intent(v.getContext(), SelectMotorActivity.class), REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY);
-            }
-        });
-        viewModel = new ViewModelProvider(this).get(MainViewModel.class);
-        viewModel.mainActivity = this;
+        viewModel.onCreateActivity(this);
     }
 
     @Override
     protected void onStart() {
-        Log.i(TAG, "onStart()");
+        //Log.i(TAG, "onStart()");
         super.onStart();
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_CODE_MIC);
         } else {
-            synchronized (thr) {
-                if (recorder == null) startRecorder();
-                pauseThread = false;
-                thr.notifyAll();
+            synchronized (viewModel.thr) {
+                if (viewModel.recorder == null) startRecorder();
+                viewModel.pauseThread = false;
+                viewModel.thr.notifyAll();
             }
         }
     }
@@ -138,18 +94,19 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        synchronized (thr) {
-            pauseThread = true;
-            thr.notifyAll();
+        synchronized (viewModel.thr) {
+            viewModel.pauseThread = true;
+            viewModel.thr.notifyAll();
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        synchronized (thr) {
-            runThr = false;
-            thr.notifyAll();
+        if (isChangingConfigurations()) return;
+        synchronized (viewModel.thr) {
+            viewModel.runThr = false;
+            viewModel.thr.notifyAll();
         }
     }
 
@@ -170,7 +127,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void startRecorder() {
-        synchronized (thr) {
+        synchronized (viewModel.thr) {
+            MediaRecorder recorder;
             recorder = new MediaRecorder();
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
@@ -179,13 +137,14 @@ public class MainActivity extends AppCompatActivity {
             try {
                 recorder.prepare();
                 recorder.start();
-                pauseThread = false;
-                thr.notifyAll();
+                viewModel.pauseThread = false;
+                viewModel.thr.notifyAll();
             } catch (IOException e) {
                 //e.printStackTrace();
                 recorder = null;
                 tx.setText(R.string.ERROR);
             }
+            viewModel.recorder = recorder;
         }
     }
 
@@ -206,11 +165,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    void onConnected() {
-        seekBar.setVisibility(View.VISIBLE);
+    void onConnectResult(OutputStream outputStream2) {
+        seekBar.setVisibility(outputStream2 == null ? View.INVISIBLE : View.VISIBLE);
     }
 
     void disconnect() {
+        if (viewModel.socket == null) return;
         try {
             viewModel.socket.close();
         } catch (IOException e) {
@@ -218,5 +178,9 @@ public class MainActivity extends AppCompatActivity {
         }
         viewModel.outputStream = null;
         seekBar.setVisibility(View.INVISIBLE);
+    }
+
+    void onUpdateAmplitude(int maxAmplitude) {
+        tx.setText(String.valueOf(maxAmplitude));
     }
 }

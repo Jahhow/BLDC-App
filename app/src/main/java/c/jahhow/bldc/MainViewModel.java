@@ -2,6 +2,7 @@ package c.jahhow.bldc;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.media.MediaRecorder;
 import android.util.Log;
 
 import androidx.lifecycle.ViewModel;
@@ -13,11 +14,63 @@ import java.util.UUID;
 public class MainViewModel extends ViewModel {
     static final String TAG = MainViewModel.class.getSimpleName();
     static final UUID BLUETOOTH_SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    MainActivity mainActivity;
+
+    final Thread thr = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            synchronized (thr) {
+                while (runThr) {
+                    if (recorder == null) {
+                        try {
+                            thr.wait();
+                        } catch (InterruptedException e) {
+                            //e.printStackTrace();
+                        }
+                        continue;
+                    }
+                    long timeoutMs;
+                    if (pauseThread) timeoutMs = 0;
+                    else {
+                        timeoutMs = 300;
+                        mainActivity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mainActivity.onUpdateAmplitude(recorder.getMaxAmplitude());
+                            }
+                        });
+                    }
+                    try {
+                        thr.wait(timeoutMs);
+                    } catch (InterruptedException e) {
+                        //e.printStackTrace();
+                    }
+                }
+                if (recorder != null) {
+                    recorder.stop();
+                    recorder = null;
+                }
+            }
+        }
+    });//lock
+    MediaRecorder recorder = null;//locked by thread thr
+    boolean pauseThread = true;  //locked by thread thr
+    boolean runThr = true;
+
+    // These variables should be maintained on main thread only.
+    private MainActivity mainActivity;
     ConnectThread connectThread;
+    BluetoothDevice bluetoothDevice;
     BluetoothSocket socket;
     OutputStream outputStream;
-    BluetoothDevice bluetoothDevice;
+
+    public MainViewModel() {
+        thr.start();
+    }
+
+    void onCreateActivity(MainActivity activity) {
+        mainActivity = activity;
+        mainActivity.onConnectResult(outputStream);
+    }
 
     void connect(BluetoothDevice device) {
         bluetoothDevice = device;
@@ -26,19 +79,19 @@ public class MainViewModel extends ViewModel {
         connectThread.start();
     }
 
-    void onConnectResult(OutputStream outputStream2, BluetoothSocket bluetoothSocket,
-                         ConnectThread thread) {
+    private void onConnectResult(OutputStream outputStream2, BluetoothSocket bluetoothSocket,
+                                 ConnectThread thread) {
         if (thread == connectThread) {
-            if(socket!=null){
+            if (socket != null) {
                 try {
                     socket.close();
                 } catch (IOException e) {
                     //e.printStackTrace();
                 }
             }
-            socket=bluetoothSocket;
-            outputStream=outputStream2;
-            mainActivity.onConnected();
+            socket = bluetoothSocket;
+            outputStream = outputStream2;
+            mainActivity.onConnectResult(outputStream2);
         }
     }
 
