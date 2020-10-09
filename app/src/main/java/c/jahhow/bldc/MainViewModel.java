@@ -8,14 +8,38 @@ import android.util.Log;
 import androidx.annotation.MainThread;
 import androidx.lifecycle.ViewModel;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.UUID;
 
 public class MainViewModel extends ViewModel {
     static final String TAG = MainViewModel.class.getSimpleName();
     static final UUID BLUETOOTH_SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
+    final byte initDuty = 70;
+    final int arrSize = 32;
+    byte[] bestWave = new byte[arrSize];
+    byte[] tryWave = new byte[arrSize];
+
+    // These variables should be maintained on main thread only.
+    private MainActivity mainActivity;
+    ConnectThread connectThread;
+    BluetoothDevice bluetoothDevice;
+    BluetoothSocket socket;
+    OutputStream outputStream;
+    InputStream inputStream;
+
+    public MainViewModel() {
+        thr.start();
+        for (int i = 0; i < arrSize; ++i) {
+            bestWave[i] = initDuty;
+            tryWave[i] = initDuty;
+        }
+    }
 
     final Thread thr = new Thread(new Runnable() {
         @Override
@@ -58,18 +82,6 @@ public class MainViewModel extends ViewModel {
     boolean pauseThread = true;  //locked by thread thr
     boolean runThr = true;
 
-    // These variables should be maintained on main thread only.
-    private MainActivity mainActivity;
-    ConnectThread connectThread;
-    BluetoothDevice bluetoothDevice;
-    BluetoothSocket socket;
-    OutputStream outputStream;
-    InputStream inputStream;
-
-    public MainViewModel() {
-        thr.start();
-    }
-
     @MainThread
     boolean isConnected() {
         return socket != null && socket.isConnected();
@@ -86,24 +98,6 @@ public class MainViewModel extends ViewModel {
         if (connectThread != null) connectThread.cancel();
         connectThread = new ConnectThread(device);
         connectThread.start();
-    }
-
-    @MainThread
-    private void onConnectResult(OutputStream outputStream2, InputStream inputStream2,
-                                 BluetoothSocket bluetoothSocket, ConnectThread thread) {
-        if (thread == connectThread) {
-            if (socket != null) {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    //e.printStackTrace();
-                }
-            }
-            socket = bluetoothSocket;
-            outputStream = outputStream2;
-            inputStream = inputStream2;
-            mainActivity.setConnected(true);
-        }
     }
 
     private class ConnectThread extends Thread {
@@ -145,7 +139,53 @@ public class MainViewModel extends ViewModel {
             mainActivity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    onConnectResult(outputStream1, inputStream1, mmSocket, ConnectThread.this);
+                    if (ConnectThread.this != connectThread)
+                        return;
+                    if (socket != null) {
+                        try {
+                            socket.close();
+                        } catch (IOException e) {
+                            //e.printStackTrace();
+                        }
+                    }
+                    if (mmSocket == null || !mmSocket.isConnected()
+                            || outputStream1 == null || inputStream1 == null) {
+                        // failed
+                        MainViewModel.this.socket = null;
+                        MainViewModel.this.outputStream = null;
+                        MainViewModel.this.inputStream = null;
+                        mainActivity.setConnected(false);
+                    } else {
+                        MainViewModel.this.socket = mmSocket;
+                        MainViewModel.this.outputStream = outputStream1;
+                        MainViewModel.this.inputStream = inputStream1;
+                        mainActivity.setConnected(true);
+
+                        Thread threadInputStream = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    BufferedReader reader = new BufferedReader(new InputStreamReader(MainViewModel.this.inputStream));
+                                    while (true) {
+                                        final String s = reader.readLine();
+                                        if (s == null) {
+                                            mainActivity.disconnect();
+                                            return;
+                                        }
+                                        mainActivity.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                mainActivity.onReceiveSpinPeriod(s);
+                                            }
+                                        });
+                                    }
+                                } catch (IOException e) {
+                                    //e.printStackTrace();
+                                }
+                            }
+                        });
+                        threadInputStream.start();
+                    }
                 }
             });
         }

@@ -9,15 +9,39 @@
     <TextView
         android:id="@+id/tx"
         android:layout_width="wrap_content"
-        android:layout_height="41dp"
+        android:layout_height="wrap_content"
         android:text="Sound Level"
         android:textSize="30sp"
-        app:layout_constraintBottom_toTopOf="@+id/seekBar"
+        app:layout_constraintBottom_toTopOf="@+id/tx2"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_chainStyle="packed" />
+
+    <TextView
+        android:id="@+id/tx2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/spin_period"
+        android:textSize="30sp"
+        app:layout_constraintBottom_toTopOf="@+id/seekBar"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tx"
+        app:layout_constraintVertical_chainStyle="packed" />
+
+    <SeekBar
+        android:id="@+id/seekBar"
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:max="255"
+        app:layout_constraintBottom_toTopOf="@+id/button"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tx2" />
 
     <Button
         android:id="@+id/button"
@@ -28,18 +52,4 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
-
-    <SeekBar
-        android:id="@+id/seekBar"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:max="255"
-        app:layout_constraintBottom_toTopOf="@+id/button"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tx"
-        app:layout_constraintWidth_max="320dp" />
-
 </androidx.constraintlayout.widget.ConstraintLayout>

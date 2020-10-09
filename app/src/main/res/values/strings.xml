@@ -3,4 +3,5 @@
     <string name="ERROR">ERROR</string>
     <string name="No_Permission">No Permission</string>
     <string name="select_motor">Select Motor</string>
+    <string name="spin_period">Spin Period:\u0020</string>
 </resources>

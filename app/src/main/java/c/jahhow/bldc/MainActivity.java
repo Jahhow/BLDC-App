@@ -29,7 +29,8 @@ public class MainActivity extends AppCompatActivity {
     static final String PATH_NAME = "/dev/null";
     static final int REQUEST_CODE_MIC = 37189;
     static final int REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY = 11947;
-    TextView tx;
+    TextView txNoise;
+    TextView txSpinPeriod;
     SeekBar seekBar;
     MainViewModel viewModel;
 
@@ -38,7 +39,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         viewModel = new ViewModelProvider(this).get(MainViewModel.class);
         setContentView(R.layout.activity_main);
-        tx = findViewById(R.id.tx);
+        txNoise = findViewById(R.id.tx);
+        txSpinPeriod = findViewById(R.id.tx2);
         Button bt = findViewById(R.id.button);
         bt.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -121,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
                     if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
                         startRecorder();
                     } else {
-                        tx.setText(R.string.No_Permission);
+                        txNoise.setText(R.string.No_Permission);
                     }
             }
         }
@@ -143,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 //e.printStackTrace();
                 recorder = null;
-                tx.setText(R.string.ERROR);
+                txNoise.setText(R.string.ERROR);
             }
             viewModel.recorder = recorder;
         }
@@ -179,13 +181,17 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             //e.printStackTrace();
         }
-        viewModel.socket=null;
+        viewModel.socket = null;
         viewModel.outputStream = null;
         viewModel.inputStream = null;
         seekBar.setVisibility(View.INVISIBLE);
     }
 
     void onUpdateAmplitude(int maxAmplitude) {
-        tx.setText(String.valueOf(maxAmplitude));
+        txNoise.setText("Noise: " + String.valueOf(maxAmplitude));
+    }
+
+    void onReceiveSpinPeriod(String spinPeriod) {
+        txSpinPeriod.setText(getString(R.string.spin_period) + spinPeriod);
     }
 }
