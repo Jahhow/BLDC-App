@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_CODE_MIC) {
-            Log.i(TAG, "onRequestPermissionsResult()");
+            //Log.i(TAG, "onRequestPermissionsResult()");
             for (int i = 0; i < permissions.length; ++i) {
                 if (permissions[i].equals(Manifest.permission.RECORD_AUDIO))
                     if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
@@ -170,7 +170,9 @@ public class MainActivity extends AppCompatActivity {
 
     @MainThread
     void setConnected(boolean connected) {
-        seekBar.setVisibility(connected ? View.VISIBLE : View.INVISIBLE);
+        int visibility = connected ? View.VISIBLE : View.INVISIBLE;
+        seekBar.setVisibility(visibility);
+        txSpinPeriod.setVisibility(visibility);
     }
 
     @MainThread
@@ -184,11 +186,11 @@ public class MainActivity extends AppCompatActivity {
         viewModel.socket = null;
         viewModel.outputStream = null;
         viewModel.inputStream = null;
-        seekBar.setVisibility(View.INVISIBLE);
+        setConnected(false);
     }
 
     void onUpdateAmplitude(int maxAmplitude) {
-        txNoise.setText("Noise: " + String.valueOf(maxAmplitude));
+        txNoise.setText("Noise: " + maxAmplitude);
     }
 
     void onReceiveSpinPeriod(String spinPeriod) {
