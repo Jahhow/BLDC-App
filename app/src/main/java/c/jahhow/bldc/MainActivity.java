@@ -1,5 +1,6 @@
 package c.jahhow.bldc;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -165,10 +166,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    void onConnectResult(OutputStream outputStream2) {
-        seekBar.setVisibility(outputStream2 == null ? View.INVISIBLE : View.VISIBLE);
+    @MainThread
+    void setConnected(boolean connected) {
+        seekBar.setVisibility(connected ? View.VISIBLE : View.INVISIBLE);
     }
 
+    @MainThread
     void disconnect() {
         if (viewModel.socket == null) return;
         try {
@@ -176,7 +179,9 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             //e.printStackTrace();
         }
+        viewModel.socket=null;
         viewModel.outputStream = null;
+        viewModel.inputStream = null;
         seekBar.setVisibility(View.INVISIBLE);
     }
 

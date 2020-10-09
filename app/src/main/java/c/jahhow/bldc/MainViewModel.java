@@ -5,9 +5,11 @@ import android.bluetooth.BluetoothSocket;
 import android.media.MediaRecorder;
 import android.util.Log;
 
+import androidx.annotation.MainThread;
 import androidx.lifecycle.ViewModel;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
 
@@ -62,14 +64,21 @@ public class MainViewModel extends ViewModel {
     BluetoothDevice bluetoothDevice;
     BluetoothSocket socket;
     OutputStream outputStream;
+    InputStream inputStream;
 
     public MainViewModel() {
         thr.start();
     }
 
+    @MainThread
+    boolean isConnected() {
+        return socket != null && socket.isConnected();
+    }
+
+    @MainThread
     void onCreateActivity(MainActivity activity) {
         mainActivity = activity;
-        mainActivity.onConnectResult(outputStream);
+        mainActivity.setConnected(isConnected());
     }
 
     void connect(BluetoothDevice device) {
@@ -79,8 +88,9 @@ public class MainViewModel extends ViewModel {
         connectThread.start();
     }
 
-    private void onConnectResult(OutputStream outputStream2, BluetoothSocket bluetoothSocket,
-                                 ConnectThread thread) {
+    @MainThread
+    private void onConnectResult(OutputStream outputStream2, InputStream inputStream2,
+                                 BluetoothSocket bluetoothSocket, ConnectThread thread) {
         if (thread == connectThread) {
             if (socket != null) {
                 try {
@@ -91,7 +101,8 @@ public class MainViewModel extends ViewModel {
             }
             socket = bluetoothSocket;
             outputStream = outputStream2;
-            mainActivity.onConnectResult(outputStream2);
+            inputStream = inputStream2;
+            mainActivity.setConnected(true);
         }
     }
 
@@ -105,6 +116,7 @@ public class MainViewModel extends ViewModel {
 
         public void run() {
             OutputStream outputStream = null;
+            InputStream inputStream = null;
             try {
                 // Get a BluetoothSocket to connect with the given BluetoothDevice.
                 // MY_UUID is the app's UUID string, also used in the server code.
@@ -120,6 +132,7 @@ public class MainViewModel extends ViewModel {
                     // The connection attempt succeeded. Perform work associated with
                     // the connection in a separate thread.
                     outputStream = mmSocket.getOutputStream();
+                    inputStream = mmSocket.getInputStream();
                 }
             } catch (IOException connectException) {
                 // Unable to connect; close the socket and return.
@@ -128,11 +141,11 @@ public class MainViewModel extends ViewModel {
 
             // return result
             final OutputStream outputStream1 = outputStream;
-            final BluetoothSocket mmSocket1 = mmSocket;
+            final InputStream inputStream1 = inputStream;
             mainActivity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    onConnectResult(outputStream1, mmSocket1, ConnectThread.this);
+                    onConnectResult(outputStream1, inputStream1, mmSocket, ConnectThread.this);
                 }
             });
         }
@@ -145,7 +158,6 @@ public class MainViewModel extends ViewModel {
             } catch (IOException e) {
                 Log.e(TAG, "Could not close the client socket", e);
             }
-            mmSocket = null;
         }
     }
 }
