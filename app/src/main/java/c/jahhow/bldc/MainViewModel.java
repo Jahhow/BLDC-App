@@ -8,12 +8,12 @@ import android.util.Log;
 import androidx.annotation.MainThread;
 import androidx.lifecycle.ViewModel;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.Random;
 import java.util.UUID;
 
 public class MainViewModel extends ViewModel {
@@ -24,6 +24,11 @@ public class MainViewModel extends ViewModel {
     final int arrSize = 32;
     byte[] bestWave = new byte[arrSize];
     byte[] tryWave = new byte[arrSize];
+    int spinPeriod = -1;
+    int targetPeriod = 20;
+    int amplitude = Integer.MAX_VALUE;
+    int bestAmplitude = Integer.MAX_VALUE;
+    Random random = new Random();
 
     // These variables should be maintained on main thread only.
     private MainActivity mainActivity;
@@ -58,10 +63,46 @@ public class MainViewModel extends ViewModel {
                     if (pauseThread) timeoutMs = 0;
                     else {
                         timeoutMs = 300;
+                        amplitude = recorder.getMaxAmplitude();
                         mainActivity.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                mainActivity.onUpdateAmplitude(recorder.getMaxAmplitude());
+                                mainActivity.onUpdateAmplitude(amplitude);
+                            }
+                        });
+                        if (spinPeriod == targetPeriod && amplitude < bestAmplitude) {
+                            //new best wave found
+                            System.arraycopy(tryWave, 0, bestWave, 0, arrSize);
+                            mainActivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mainActivity.onUpdateAmplitude(amplitude);
+                                    mainActivity.onUpdateBestWave(bestWave);
+                                }
+                            });
+                        }
+                        for (int i = 0; i < arrSize; ++i) {
+                            tryWave[i] = (byte) ((int)bestWave[i] + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
+                        }
+                        mainActivity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mainActivity.onUpdateTryWave(tryWave);
+                            }
+                        });
+                        try {
+                            final OutputStream outputStream1 = outputStream;
+                            if (outputStream1 != null) {
+                                //outputStream.write(91543278);
+                                outputStream.write(tryWave);
+                            }
+                        } catch (IOException e) {
+                            //e.printStackTrace();
+                        }
+                        mainActivity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mainActivity.onUpdateAmplitude(amplitude);
                             }
                         });
                     }
@@ -171,6 +212,11 @@ public class MainViewModel extends ViewModel {
                                         if (s == null) {
                                             mainActivity.disconnect();
                                             return;
+                                        }
+                                        try {
+                                            spinPeriod = Integer.parseInt(s);
+                                        } catch (NumberFormatException e) {
+                                            spinPeriod = -1;
                                         }
                                         mainActivity.runOnUiThread(new Runnable() {
                                             @Override
