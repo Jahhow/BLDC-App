@@ -27,6 +27,9 @@ public class MainViewModel extends ViewModel {
     int spinPeriod = -1;
     int targetPeriod = 20;
     int amplitude = Integer.MAX_VALUE;
+    int sumAmp=0;
+    final int numAmpSample=100;
+    int countNumSample=0;
     int bestAmplitude = Integer.MAX_VALUE;
     Random random = new Random();
 
@@ -62,49 +65,50 @@ public class MainViewModel extends ViewModel {
                     long timeoutMs;
                     if (pauseThread) timeoutMs = 0;
                     else {
-                        timeoutMs = 300;
-                        amplitude = recorder.getMaxAmplitude();
-                        mainActivity.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                mainActivity.onUpdateAmplitude(amplitude);
-                            }
-                        });
-                        if (spinPeriod == targetPeriod && amplitude < bestAmplitude) {
-                            //new best wave found
-                            System.arraycopy(tryWave, 0, bestWave, 0, arrSize);
+                        timeoutMs = 16;
+                        int amp= recorder.getMaxAmplitude();
+                        sumAmp+=amp;
+                        ++countNumSample;
+                        if(countNumSample>=numAmpSample){
+                            amplitude=sumAmp/countNumSample;
+                            countNumSample=0;
+                            sumAmp=0;
                             mainActivity.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
                                     mainActivity.onUpdateAmplitude(amplitude);
-                                    mainActivity.onUpdateBestWave(bestWave);
                                 }
                             });
-                        }
-                        for (int i = 0; i < arrSize; ++i) {
-                            tryWave[i] = (byte) ((int)bestWave[i] + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
-                        }
-                        mainActivity.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                mainActivity.onUpdateTryWave(tryWave);
+
+                            if (spinPeriod == targetPeriod && amplitude < bestAmplitude) {
+                                //new best wave found
+                                System.arraycopy(tryWave, 0, bestWave, 0, arrSize);
+                                mainActivity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        mainActivity.onUpdateBestWave(bestWave);
+                                    }
+                                });
                             }
-                        });
-                        try {
-                            final OutputStream outputStream1 = outputStream;
-                            if (outputStream1 != null) {
-                                //outputStream.write(91543278);
-                                outputStream.write(tryWave);
+                            for (int i = 0; i < arrSize; ++i) {
+                                tryWave[i] = (byte) ((int)bestWave[i] + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
                             }
-                        } catch (IOException e) {
-                            //e.printStackTrace();
+                            mainActivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mainActivity.onUpdateTryWave(tryWave);
+                                }
+                            });
+                            try {
+                                final OutputStream outputStream1 = outputStream;
+                                if (outputStream1 != null) {
+                                    //outputStream.write(91543278);
+                                    outputStream.write(tryWave);
+                                }
+                            } catch (IOException e) {
+                                //e.printStackTrace();
+                            }
                         }
-                        mainActivity.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                mainActivity.onUpdateAmplitude(amplitude);
-                            }
-                        });
                     }
                     try {
                         thr.wait(timeoutMs);

@@ -42,7 +42,6 @@ public class MainActivity extends AppCompatActivity {
     LineChart lineChart;
     TextView txNoise;
     TextView txSpinPeriod;
-    SeekBar seekBar;
     MainViewModel viewModel;
 
     @Override
@@ -58,32 +57,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startActivityForResult(new Intent(v.getContext(), SelectMotorActivity.class), REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY);
-            }
-        });
-        seekBar = findViewById(R.id.seekBar);
-        seekBar.setVisibility(View.INVISIBLE);
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                OutputStream outputStream = viewModel.outputStream;
-                if (outputStream != null) {
-                    try {
-                        outputStream.write(progress);
-                    } catch (IOException e) {
-                        //e.printStackTrace();
-                        disconnect();
-                    }
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
             }
         });
         viewModel.onCreateActivity(this);
@@ -240,7 +213,6 @@ public class MainActivity extends AppCompatActivity {
     @MainThread
     void setConnected(boolean connected) {
         int visibility = connected ? View.VISIBLE : View.INVISIBLE;
-        seekBar.setVisibility(visibility);
         txSpinPeriod.setVisibility(visibility);
     }
 
