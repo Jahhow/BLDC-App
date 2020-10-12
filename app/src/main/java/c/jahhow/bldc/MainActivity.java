@@ -10,7 +10,8 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.view.View;
 import android.widget.Button;
-import android.widget.SeekBar;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.annotation.MainThread;
@@ -30,7 +31,6 @@ import com.github.mikephil.charting.interfaces.dataprovider.LineDataProvider;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
@@ -39,10 +39,12 @@ public class MainActivity extends AppCompatActivity {
     static final int REQUEST_CODE_MIC = 37189;
     static final int REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY = 11947;
 
+    MainViewModel viewModel;
     LineChart lineChart;
     TextView txNoise;
     TextView txSpinPeriod;
-    MainViewModel viewModel;
+    TextView txBestNoise;
+    Switch toggle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
         lineChart = findViewById(R.id.chart);
         txNoise = findViewById(R.id.tx);
         txSpinPeriod = findViewById(R.id.tx2);
+        txBestNoise = findViewById(R.id.txBestNoise);
         Button bt = findViewById(R.id.button);
         bt.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -59,7 +62,14 @@ public class MainActivity extends AppCompatActivity {
                 startActivityForResult(new Intent(v.getContext(), SelectMotorActivity.class), REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY);
             }
         });
+        toggle = findViewById(R.id.toggle);
         viewModel.onCreateActivity(this);
+        toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                viewModel.learnEnabled = isChecked;
+            }
+        });
 
         ArrayList<Entry> values = new ArrayList<>(viewModel.arrSize);
         for (int x = 0; x < viewModel.arrSize; x++) {
@@ -214,6 +224,11 @@ public class MainActivity extends AppCompatActivity {
     void setConnected(boolean connected) {
         int visibility = connected ? View.VISIBLE : View.INVISIBLE;
         txSpinPeriod.setVisibility(visibility);
+        toggle.setVisibility(visibility);
+    }
+
+    void setLearnEnabled(boolean enabled) {
+        toggle.setChecked(enabled);
     }
 
     @MainThread
@@ -230,8 +245,12 @@ public class MainActivity extends AppCompatActivity {
         setConnected(false);
     }
 
-    void onUpdateAmplitude(int maxAmplitude) {
-        txNoise.setText("Noise: " + maxAmplitude);
+    void onUpdateAmplitude(int amp) {
+        txNoise.setText("Noise: " + amp);
+    }
+
+    void onUpdateBestAmplitude(int amp) {
+        txBestNoise.setText("Best Noise: " + amp);
     }
 
     void onReceiveSpinPeriod(String spinPeriod) {

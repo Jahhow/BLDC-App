@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
 
@@ -25,13 +26,15 @@ public class MainViewModel extends ViewModel {
     byte[] bestWave = new byte[arrSize];
     byte[] tryWave = new byte[arrSize];
     int spinPeriod = -1;
-    int targetPeriod = 20;
+    int targetPeriod = 26;
     int amplitude = Integer.MAX_VALUE;
-    int sumAmp=0;
-    final int numAmpSample=100;
-    int countNumSample=0;
+    int sumAmp = 0;
+    final int numAmpSample = 100;
+    int countNumSample = 0;
     int bestAmplitude = Integer.MAX_VALUE;
     Random random = new Random();
+    boolean learnEnabled = false;
+    boolean sendBestWave = true;
 
     // These variables should be maintained on main thread only.
     private MainActivity mainActivity;
@@ -66,47 +69,74 @@ public class MainViewModel extends ViewModel {
                     if (pauseThread) timeoutMs = 0;
                     else {
                         timeoutMs = 16;
-                        int amp= recorder.getMaxAmplitude();
-                        sumAmp+=amp;
+                        int amp = recorder.getMaxAmplitude();
+                        sumAmp += amp;
                         ++countNumSample;
-                        if(countNumSample>=numAmpSample){
-                            amplitude=sumAmp/countNumSample;
-                            countNumSample=0;
-                            sumAmp=0;
-                            mainActivity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mainActivity.onUpdateAmplitude(amplitude);
-                                }
-                            });
+                        if (countNumSample >= numAmpSample) {
+                            amplitude = sumAmp / countNumSample;
+                            countNumSample = 0;
+                            sumAmp = 0;
 
-                            if (spinPeriod == targetPeriod && amplitude < bestAmplitude) {
-                                //new best wave found
-                                System.arraycopy(tryWave, 0, bestWave, 0, arrSize);
+                            if (learnEnabled) {
                                 mainActivity.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        mainActivity.onUpdateBestWave(bestWave);
+                                        mainActivity.onUpdateAmplitude(amplitude);
                                     }
                                 });
-                            }
-                            for (int i = 0; i < arrSize; ++i) {
-                                tryWave[i] = (byte) ((int)bestWave[i] + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
-                            }
-                            mainActivity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mainActivity.onUpdateTryWave(tryWave);
+                                if (spinPeriod == targetPeriod && amplitude < bestAmplitude) {
+                                    //new best wave found
+                                    bestAmplitude = amplitude;
+                                    System.arraycopy(tryWave, 0, bestWave, 0, arrSize);
+                                    mainActivity.runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            mainActivity.onUpdateBestWave(bestWave);
+                                            mainActivity.onUpdateBestAmplitude(bestAmplitude);
+                                        }
+                                    });
+                                }else if(spinPeriod<targetPeriod){
+
                                 }
-                            });
-                            try {
-                                final OutputStream outputStream1 = outputStream;
-                                if (outputStream1 != null) {
-                                    //outputStream.write(91543278);
-                                    outputStream.write(tryWave);
+                                for (int i = 0; i < arrSize; ++i) {
+                                    tryWave[i] = (byte) ((int) bestWave[i] + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
                                 }
-                            } catch (IOException e) {
-                                //e.printStackTrace();
+                                mainActivity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        mainActivity.onUpdateTryWave(tryWave);
+                                    }
+                                });
+                                try {
+                                    final OutputStream outputStream1 = outputStream;
+                                    if (outputStream1 != null) {
+                                        //outputStream.write(91543278);
+                                        outputStream1.write(tryWave);
+                                    }
+                                } catch (IOException e) {
+                                    //e.printStackTrace();
+                                }
+                                sendBestWave = true;
+                            } else {
+                                if (sendBestWave) {
+                                    try {
+                                        final OutputStream outputStream1 = outputStream;
+                                        if (outputStream1 != null) {
+                                            //outputStream.write(91543278);
+                                            outputStream1.write(bestWave);
+                                        }
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                    sendBestWave = false;
+                                }
+                                bestAmplitude = amplitude;
+                                mainActivity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        mainActivity.onUpdateBestAmplitude(bestAmplitude);
+                                    }
+                                });
                             }
                         }
                     }
@@ -136,6 +166,7 @@ public class MainViewModel extends ViewModel {
     void onCreateActivity(MainActivity activity) {
         mainActivity = activity;
         mainActivity.setConnected(isConnected());
+        mainActivity.setLearnEnabled(learnEnabled);
     }
 
     void connect(BluetoothDevice device) {
