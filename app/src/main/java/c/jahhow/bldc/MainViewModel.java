@@ -35,6 +35,7 @@ public class MainViewModel extends ViewModel {
     Random random = new Random();
     boolean learnEnabled = false;
     boolean sendBestWave = true;
+    int tryBias = 0;
 
     // These variables should be maintained on main thread only.
     private MainActivity mainActivity;
@@ -95,11 +96,14 @@ public class MainViewModel extends ViewModel {
                                             mainActivity.onUpdateBestAmplitude(bestAmplitude);
                                         }
                                     });
-                                }else if(spinPeriod<targetPeriod){
-
+                                    tryBias = 0;
+                                } else if (spinPeriod < targetPeriod) {
+                                    --tryBias;
+                                } else if (spinPeriod > targetPeriod) {
+                                    ++tryBias;
                                 }
                                 for (int i = 0; i < arrSize; ++i) {
-                                    tryWave[i] = (byte) ((int) bestWave[i] + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
+                                    tryWave[i] = (byte) ((int) bestWave[i] + tryBias + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
                                 }
                                 mainActivity.runOnUiThread(new Runnable() {
                                     @Override
