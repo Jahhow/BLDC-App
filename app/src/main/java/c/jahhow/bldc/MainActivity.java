@@ -32,6 +32,7 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 public class MainActivity extends AppCompatActivity {
     static final String TAG = MainActivity.class.getSimpleName();
@@ -40,7 +41,8 @@ public class MainActivity extends AppCompatActivity {
     static final int REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY = 11947;
 
     MainViewModel viewModel;
-    LineChart lineChart;
+    LineChart noiseChart;
+    LineChart waveChart;
     TextView txNoise;
     TextView txSpinPeriod;
     TextView txBestNoise;
@@ -51,7 +53,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         viewModel = new ViewModelProvider(this).get(MainViewModel.class);
         setContentView(R.layout.activity_main);
-        lineChart = findViewById(R.id.chart);
+        noiseChart = findViewById(R.id.NoiseChart);
+        waveChart = findViewById(R.id.chart);
         txNoise = findViewById(R.id.tx);
         txSpinPeriod = findViewById(R.id.tx2);
         txBestNoise = findViewById(R.id.txBestNoise);
@@ -71,62 +74,116 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Noise Chart ===========================================================
+        // create a dataset and give it a type
+        LineDataSet noise;
+        noise = new LineDataSet(noiseList, "Noise");
+
+        noise.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        noise.setCubicIntensity(0.2f);
+        noise.setDrawFilled(true);
+        noise.setDrawCircles(false);
+        noise.setLineWidth(1.8f);
+        noise.setCircleRadius(4f);
+        noise.setCircleColor(0xFF6200EE);
+        noise.setHighLightColor(0xFF6200EE);
+        noise.setColor(0xFF6200EE);
+        noise.setFillColor(0xFF6200EE);
+        noise.setFillAlpha(100);
+        noise.setDrawHorizontalHighlightIndicator(false);
+        /*noise.setFillFormatter(new IFillFormatter() {
+            @Override
+            public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
+                return noiseChart.getAxisLeft().getAxisMinimum();
+            }
+        });*/
+
+        LineDataSet bestNoise;
+        bestNoise = new LineDataSet(new ArrayList<Entry>(), "Best Noise");
+
+        bestNoise.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        bestNoise.setCubicIntensity(0.2f);
+        bestNoise.setDrawFilled(true);
+        bestNoise.setDrawCircles(false);
+        bestNoise.setLineWidth(1.8f);
+        bestNoise.setCircleRadius(4f);
+        bestNoise.setCircleColor(Color.GRAY);
+        bestNoise.setHighLightColor(Color.GRAY);
+        bestNoise.setColor(Color.GRAY);
+        bestNoise.setFillColor(Color.GRAY);
+        bestNoise.setFillAlpha(100);
+        bestNoise.setDrawHorizontalHighlightIndicator(false);
+//        bestNoise.setFillFormatter(new IFillFormatter() {
+//            @Override
+//            public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
+//                return noiseChart.getAxisLeft().getAxisMinimum();
+//            }
+//        });
+
+        // create a data object with the data sets
+        LineData noiseData = new LineData(noise, bestNoise);
+        noiseData.setValueTextSize(9f);
+        noiseData.setDrawValues(false);
+        noiseChart.setData(noiseData);
+        noiseChart.setScaleEnabled(false);
+
+        // Current Wave Chart ============================================
         ArrayList<Entry> values = new ArrayList<>(viewModel.arrSize);
         for (int x = 0; x < viewModel.arrSize; x++) {
             values.add(new Entry(x, viewModel.bestWave[x]));
         }
-        // create a dataset and give it a type
-        LineDataSet set1;
-        set1 = new LineDataSet(values, "Best Wave");
 
-        set1.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-        set1.setCubicIntensity(0.2f);
-        set1.setDrawFilled(true);
-        set1.setDrawCircles(false);
-        set1.setLineWidth(1.8f);
-        set1.setCircleRadius(4f);
-        set1.setCircleColor(Color.GREEN);
-        set1.setHighLightColor(Color.rgb(244, 117, 117));
-        set1.setColor(Color.GREEN);
-        set1.setFillColor(Color.GREEN);
-        set1.setFillAlpha(100);
-        set1.setDrawHorizontalHighlightIndicator(false);
-        set1.setFillFormatter(new IFillFormatter() {
+        // create a dataset and give it a type
+        LineDataSet dataSetBestWave;
+        dataSetBestWave = new LineDataSet(values, "Best Wave");
+
+        dataSetBestWave.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        dataSetBestWave.setCubicIntensity(0.2f);
+        dataSetBestWave.setDrawFilled(true);
+        dataSetBestWave.setDrawCircles(false);
+        dataSetBestWave.setLineWidth(1.8f);
+        dataSetBestWave.setCircleRadius(4f);
+        dataSetBestWave.setCircleColor(Color.GREEN);
+        dataSetBestWave.setHighLightColor(Color.rgb(244, 117, 117));
+        dataSetBestWave.setColor(Color.GREEN);
+        dataSetBestWave.setFillColor(Color.GREEN);
+        dataSetBestWave.setFillAlpha(100);
+        dataSetBestWave.setDrawHorizontalHighlightIndicator(false);
+        dataSetBestWave.setFillFormatter(new IFillFormatter() {
             @Override
             public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
-                return lineChart.getAxisLeft().getAxisMinimum();
+                return waveChart.getAxisLeft().getAxisMinimum();
             }
         });
 
-        LineDataSet set2;
-        set2 = new LineDataSet(values, "Trying Wave");
+        LineDataSet dataSetTryWave;
+        dataSetTryWave = new LineDataSet(values, "Trying Wave");
 
-        set2.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-        set2.setCubicIntensity(0.2f);
-        set2.setDrawFilled(true);
-        set2.setDrawCircles(false);
-        set2.setLineWidth(1.8f);
-        set2.setCircleRadius(4f);
-        set2.setCircleColor(Color.RED);
-        set2.setHighLightColor(Color.rgb(244, 117, 117));
-        set2.setColor(Color.RED);
-        set2.setFillColor(Color.RED);
-        set2.setFillAlpha(100);
-        set2.setDrawHorizontalHighlightIndicator(false);
-        set2.setFillFormatter(new IFillFormatter() {
+        dataSetTryWave.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        dataSetTryWave.setCubicIntensity(0.2f);
+        dataSetTryWave.setDrawFilled(true);
+        dataSetTryWave.setDrawCircles(false);
+        dataSetTryWave.setLineWidth(1.8f);
+        dataSetTryWave.setCircleRadius(4f);
+        dataSetTryWave.setCircleColor(Color.RED);
+        dataSetTryWave.setHighLightColor(Color.rgb(244, 117, 117));
+        dataSetTryWave.setColor(Color.RED);
+        dataSetTryWave.setFillColor(Color.RED);
+        dataSetTryWave.setFillAlpha(100);
+        dataSetTryWave.setDrawHorizontalHighlightIndicator(false);
+        dataSetTryWave.setFillFormatter(new IFillFormatter() {
             @Override
             public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
-                return lineChart.getAxisLeft().getAxisMinimum();
+                return waveChart.getAxisLeft().getAxisMinimum();
             }
         });
 
         // create a data object with the data sets
-        LineData data = new LineData(set1, set2);
+        LineData data = new LineData(dataSetBestWave, dataSetTryWave);
         data.setValueTextSize(9f);
         data.setDrawValues(false);
-
-        // set data
-        lineChart.setData(data);
+        waveChart.setData(data);
+        waveChart.setScaleEnabled(false);
     }
 
     @Override
@@ -222,7 +279,7 @@ public class MainActivity extends AppCompatActivity {
 
     @MainThread
     void setConnected(boolean connected) {
-        int visibility = connected ? View.VISIBLE : View.INVISIBLE;
+        int visibility = connected ? View.VISIBLE : View.GONE;
         txSpinPeriod.setVisibility(visibility);
         toggle.setVisibility(visibility);
     }
@@ -245,12 +302,39 @@ public class MainActivity extends AppCompatActivity {
         setConnected(false);
     }
 
-    void onUpdateAmplitude(int amp) {
-        txNoise.setText("Noise: " + amp);
+    LinkedList<Entry> noiseList = new LinkedList<>();
+    int noiseDataTime = 0;
+
+    void onUpdateAmplitude(int noise) {
+        //txNoise.setText("Noise: " + noise);
+        if (noiseList.size() > 30)
+            noiseList.removeFirst();
+        noiseList.addLast(new Entry(noiseDataTime++, noise));
+
+        LineDataSet set1;
+        set1 = (LineDataSet) noiseChart.getData().getDataSetByIndex(0);
+        set1.notifyDataSetChanged();
+        noiseChart.getXAxis().setAxisMinimum(noiseList.getFirst().getX());
+        onUpdateBestAmplitude(viewModel.bestAmplitude);
     }
 
     void onUpdateBestAmplitude(int amp) {
-        txBestNoise.setText("Best Noise: " + amp);
+        //txBestNoise.setText("Best Noise: " + amp);
+        float xStart = 0;
+        float xFinish = 1;
+        if (noiseList.size() >= 3) {
+            xStart = noiseList.getFirst().getX();
+            xFinish = noiseList.getLast().getX();
+        }
+
+        LineDataSet set1;
+        set1 = (LineDataSet) noiseChart.getData().getDataSetByIndex(1);
+        set1.clear();
+        set1.addEntry(new Entry(xStart, amp));
+        set1.addEntry(new Entry(xFinish, amp));
+        noiseChart.getData().notifyDataChanged();
+        noiseChart.notifyDataSetChanged();
+        noiseChart.invalidate();
     }
 
     void onReceiveSpinPeriod(String spinPeriod) {
@@ -272,10 +356,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         LineDataSet set1;
-        set1 = (LineDataSet) lineChart.getData().getDataSetByIndex(dataSetIndex);
+        set1 = (LineDataSet) waveChart.getData().getDataSetByIndex(dataSetIndex);
         set1.setValues(values);
-        lineChart.getData().notifyDataChanged();
-        lineChart.notifyDataSetChanged();
-        lineChart.invalidate();
+        waveChart.getData().notifyDataChanged();
+        waveChart.notifyDataSetChanged();
+        waveChart.invalidate();
     }
 }
