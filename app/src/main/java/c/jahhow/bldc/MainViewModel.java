@@ -34,6 +34,7 @@ public class MainViewModel extends ViewModel {
     int bestAmplitude = Integer.MAX_VALUE;
     Random random = new Random();
     boolean learnEnabled = false;
+    boolean ecoOn = false;
     boolean sendBestWave = true;
     int tryBias = 0;
 
@@ -78,13 +79,13 @@ public class MainViewModel extends ViewModel {
                             countNumSample = 0;
                             sumAmp = 0;
 
+                            mainActivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mainActivity.onUpdateAmplitude(amplitude);
+                                }
+                            });
                             if (learnEnabled) {
-                                mainActivity.runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        mainActivity.onUpdateAmplitude(amplitude);
-                                    }
-                                });
                                 if (spinPeriod == targetPeriod && amplitude < bestAmplitude) {
                                     //new best wave found
                                     bestAmplitude = amplitude;

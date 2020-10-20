@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Description;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -43,10 +44,9 @@ public class MainActivity extends AppCompatActivity {
     MainViewModel viewModel;
     LineChart noiseChart;
     LineChart waveChart;
-    TextView txNoise;
     TextView txSpinPeriod;
-    TextView txBestNoise;
     Switch toggle;
+    Switch toggleECO;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,9 +55,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         noiseChart = findViewById(R.id.NoiseChart);
         waveChart = findViewById(R.id.chart);
-        txNoise = findViewById(R.id.tx);
         txSpinPeriod = findViewById(R.id.tx2);
-        txBestNoise = findViewById(R.id.txBestNoise);
         Button bt = findViewById(R.id.button);
         bt.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -66,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         toggle = findViewById(R.id.toggle);
+        toggleECO = findViewById(R.id.toggleECO);
         viewModel.onCreateActivity(this);
         toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -73,8 +72,18 @@ public class MainActivity extends AppCompatActivity {
                 viewModel.learnEnabled = isChecked;
             }
         });
+        toggleECO.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                viewModel.ecoOn = isChecked;
+            }
+        });
 
         // Noise Chart ===========================================================
+        Description noiseChartDescription = new Description();
+        noiseChartDescription.setText("Noise");
+        noiseChart.setDescription(noiseChartDescription);
+
         // create a dataset and give it a type
         LineDataSet noise;
         noise = new LineDataSet(noiseList, "Noise");
@@ -91,12 +100,12 @@ public class MainActivity extends AppCompatActivity {
         noise.setFillColor(0xFF6200EE);
         noise.setFillAlpha(100);
         noise.setDrawHorizontalHighlightIndicator(false);
-        /*noise.setFillFormatter(new IFillFormatter() {
+        noise.setFillFormatter(new IFillFormatter() {
             @Override
             public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
                 return noiseChart.getAxisLeft().getAxisMinimum();
             }
-        });*/
+        });
 
         LineDataSet bestNoise;
         bestNoise = new LineDataSet(new ArrayList<Entry>(), "Best Noise");
@@ -113,12 +122,12 @@ public class MainActivity extends AppCompatActivity {
         bestNoise.setFillColor(Color.GRAY);
         bestNoise.setFillAlpha(100);
         bestNoise.setDrawHorizontalHighlightIndicator(false);
-//        bestNoise.setFillFormatter(new IFillFormatter() {
-//            @Override
-//            public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
-//                return noiseChart.getAxisLeft().getAxisMinimum();
-//            }
-//        });
+        bestNoise.setFillFormatter(new IFillFormatter() {
+            @Override
+            public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
+                return noiseChart.getAxisLeft().getAxisMinimum();
+            }
+        });
 
         // create a data object with the data sets
         LineData noiseData = new LineData(noise, bestNoise);
@@ -128,6 +137,10 @@ public class MainActivity extends AppCompatActivity {
         noiseChart.setScaleEnabled(false);
 
         // Current Wave Chart ============================================
+        Description waveChartDescription = new Description();
+        waveChartDescription.setText("Electric Current");
+        waveChart.setDescription(waveChartDescription);
+
         ArrayList<Entry> values = new ArrayList<>(viewModel.arrSize);
         for (int x = 0; x < viewModel.arrSize; x++) {
             values.add(new Entry(x, viewModel.bestWave[x]));
@@ -231,9 +244,9 @@ public class MainActivity extends AppCompatActivity {
                 if (permissions[i].equals(Manifest.permission.RECORD_AUDIO))
                     if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
                         startRecorder();
-                    } else {
-                        txNoise.setText(R.string.No_Permission);
-                    }
+                    } /*else {
+                        //txNoise.setText(R.string.No_Permission);
+                    }*/
             }
         }
     }
@@ -242,9 +255,11 @@ public class MainActivity extends AppCompatActivity {
         synchronized (viewModel.thr) {
             MediaRecorder recorder;
             recorder = new MediaRecorder();
-            recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+            recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+            recorder.setAudioSamplingRate(48000);
+            recorder.setAudioEncodingBitRate(96000);
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
             recorder.setOutputFile(PATH_NAME);
             try {
                 recorder.prepare();
@@ -254,7 +269,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 //e.printStackTrace();
                 recorder = null;
-                txNoise.setText(R.string.ERROR);
+                //txNoise.setText(R.string.ERROR);
             }
             viewModel.recorder = recorder;
         }
@@ -282,6 +297,7 @@ public class MainActivity extends AppCompatActivity {
         int visibility = connected ? View.VISIBLE : View.GONE;
         txSpinPeriod.setVisibility(visibility);
         toggle.setVisibility(visibility);
+        toggleECO.setVisibility(visibility);
     }
 
     void setLearnEnabled(boolean enabled) {
