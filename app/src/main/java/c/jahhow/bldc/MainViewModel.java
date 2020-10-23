@@ -30,8 +30,8 @@ public class MainViewModel extends ViewModel {
     int spinPeriod = -1;
     int targetPeriod = 27;
     int amplitude = Integer.MAX_VALUE;
-    int sumAmp = 0;
-    final int numAmpSample = 100;
+    int minAmp = 0;
+    static final int numAmpSample = 80;
     int countNumSample = 0;
     int bestAmplitude = 0;
     Random random = new Random();
@@ -40,6 +40,7 @@ public class MainViewModel extends ViewModel {
     boolean sendBestWave = true;
     int tryBias = 0;
 
+    static final int maxSizeNoiseList = 1000;
     LinkedList<Entry> noiseList = new LinkedList<>();
     int noiseDataTime = 0;
 
@@ -75,21 +76,21 @@ public class MainViewModel extends ViewModel {
                     long timeoutMs;
                     if (pauseThread) timeoutMs = 0;
                     else {
-                        timeoutMs = 16;
-                        int amp = recorder.getMaxAmplitude();
-                        sumAmp += amp;
+                        timeoutMs = 20;
+                        final int amp = recorder.getMaxAmplitude();
+                        mainActivity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mainActivity.onUpdateAmplitude(amp);
+                            }
+                        });
+                        if (amp < minAmp && amp != 0)
+                            minAmp = amp;
                         ++countNumSample;
                         if (countNumSample >= numAmpSample) {
-                            amplitude = sumAmp / countNumSample;
+                            amplitude = minAmp;
                             countNumSample = 0;
-                            sumAmp = 0;
-
-                            mainActivity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mainActivity.onUpdateAmplitude(amplitude);
-                                }
-                            });
+                            minAmp = Integer.MAX_VALUE;
                             if (learnEnabled) {
                                 if (spinPeriod == targetPeriod && amplitude < bestAmplitude) {
                                     //new best wave found

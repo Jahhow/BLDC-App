@@ -81,12 +81,14 @@ public class MainActivity extends AppCompatActivity {
         Description noiseChartDescription = new Description();
         noiseChartDescription.setText("Noise");
         noiseChart.setDescription(noiseChartDescription);
+        noiseChart.setAutoScaleMinMaxEnabled(true);
+        noiseChart.getXAxis().setDrawLabels(false);
 
         // create a dataset and give it a type
         LineDataSet noise;
         noise = new LineDataSet(viewModel.noiseList, "Noise");
 
-        noise.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        //noise.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         noise.setCubicIntensity(0.2f);
         noise.setDrawFilled(true);
         noise.setDrawCircles(false);
@@ -98,17 +100,17 @@ public class MainActivity extends AppCompatActivity {
         noise.setFillColor(0xFF6200EE);
         noise.setFillAlpha(100);
         noise.setDrawHorizontalHighlightIndicator(false);
-        noise.setFillFormatter(new IFillFormatter() {
+        /*noise.setFillFormatter(new IFillFormatter() {
             @Override
             public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
                 return noiseChart.getAxisLeft().getAxisMinimum();
             }
-        });
+        });*/
 
         LineDataSet bestNoise;
         bestNoise = new LineDataSet(new ArrayList<Entry>(), "Best Noise");
 
-        bestNoise.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        //bestNoise.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         bestNoise.setCubicIntensity(0.2f);
         bestNoise.setDrawFilled(true);
         bestNoise.setDrawCircles(false);
@@ -120,12 +122,12 @@ public class MainActivity extends AppCompatActivity {
         bestNoise.setFillColor(Color.GRAY);
         bestNoise.setFillAlpha(100);
         bestNoise.setDrawHorizontalHighlightIndicator(false);
-        bestNoise.setFillFormatter(new IFillFormatter() {
+        /*bestNoise.setFillFormatter(new IFillFormatter() {
             @Override
             public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
                 return noiseChart.getAxisLeft().getAxisMinimum();
             }
-        });
+        });*/
 
         // create a data object with the data sets
         LineData noiseData = new LineData(noise, bestNoise);
@@ -148,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
         LineDataSet dataSetBestWave;
         dataSetBestWave = new LineDataSet(values, "Best Wave");
 
-        dataSetBestWave.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        //dataSetBestWave.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         dataSetBestWave.setCubicIntensity(0.2f);
         dataSetBestWave.setDrawFilled(true);
         dataSetBestWave.setDrawCircles(false);
@@ -170,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
         LineDataSet dataSetTryWave;
         dataSetTryWave = new LineDataSet(values, "Trying Wave");
 
-        dataSetTryWave.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        //dataSetTryWave.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         dataSetTryWave.setCubicIntensity(0.2f);
         dataSetTryWave.setDrawFilled(true);
         dataSetTryWave.setDrawCircles(false);
@@ -324,7 +326,7 @@ public class MainActivity extends AppCompatActivity {
 
     void onUpdateAmplitude(int noise) {
         //txNoise.setText("Noise: " + noise);
-        if (viewModel.noiseList.size() > 30)
+        if (viewModel.noiseList.size() > MainViewModel.maxSizeNoiseList)
             viewModel.noiseList.removeFirst();
         viewModel.noiseList.addLast(new Entry(viewModel.noiseDataTime++, noise));
 
@@ -335,7 +337,20 @@ public class MainActivity extends AppCompatActivity {
         onUpdateBestAmplitude(viewModel.bestAmplitude);
     }
 
+    boolean toggleItBack = false;
+
     void onUpdateBestAmplitude(int amp) {
+        /*if (amp == 0) {
+            if (toggle.isChecked()) {
+                toggle.setChecked(false);
+                toggleItBack = true;
+            }
+        } else {
+            if (toggleItBack) {
+                toggle.setChecked(true);
+                toggleItBack = false;
+            }
+        }*/
         //txBestNoise.setText("Best Noise: " + amp);
         float xStart = 0;
         float xFinish = 1;
