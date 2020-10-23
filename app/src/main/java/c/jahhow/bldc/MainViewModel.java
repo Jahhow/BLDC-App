@@ -8,12 +8,14 @@ import android.util.Log;
 import androidx.annotation.MainThread;
 import androidx.lifecycle.ViewModel;
 
+import com.github.mikephil.charting.data.Entry;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Random;
 import java.util.UUID;
 
@@ -21,22 +23,25 @@ public class MainViewModel extends ViewModel {
     static final String TAG = MainViewModel.class.getSimpleName();
     static final UUID BLUETOOTH_SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    final byte initDuty = 70;
+    final byte initDuty = 80;
     final int arrSize = 32;
     byte[] bestWave = new byte[arrSize];
     byte[] tryWave = new byte[arrSize];
     int spinPeriod = -1;
-    int targetPeriod = 26;
+    int targetPeriod = 27;
     int amplitude = Integer.MAX_VALUE;
     int sumAmp = 0;
     final int numAmpSample = 100;
     int countNumSample = 0;
-    int bestAmplitude = Integer.MAX_VALUE;
+    int bestAmplitude = 0;
     Random random = new Random();
     boolean learnEnabled = false;
     boolean ecoOn = false;
     boolean sendBestWave = true;
     int tryBias = 0;
+
+    LinkedList<Entry> noiseList = new LinkedList<>();
+    int noiseDataTime = 0;
 
     // These variables should be maintained on main thread only.
     private MainActivity mainActivity;
@@ -98,10 +103,12 @@ public class MainViewModel extends ViewModel {
                                         }
                                     });
                                     tryBias = 0;
-                                } else if (spinPeriod < targetPeriod) {
-                                    --tryBias;
-                                } else if (spinPeriod > targetPeriod) {
-                                    ++tryBias;
+                                } else if (spinPeriod >= 0) {
+                                    if (spinPeriod < targetPeriod) {
+                                        --tryBias;
+                                    } else if (spinPeriod > targetPeriod) {
+                                        ++tryBias;
+                                    }
                                 }
                                 for (int i = 0; i < arrSize; ++i) {
                                     tryWave[i] = (byte) ((int) bestWave[i] + tryBias + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
@@ -119,7 +126,7 @@ public class MainViewModel extends ViewModel {
                                         outputStream1.write(tryWave);
                                     }
                                 } catch (IOException e) {
-                                    //e.printStackTrace();
+                                    mainActivity.disconnect();
                                 }
                                 sendBestWave = true;
                             } else {
@@ -131,7 +138,7 @@ public class MainViewModel extends ViewModel {
                                             outputStream1.write(bestWave);
                                         }
                                     } catch (IOException e) {
-                                        e.printStackTrace();
+                                        mainActivity.disconnect();
                                     }
                                     sendBestWave = false;
                                 }
@@ -172,6 +179,9 @@ public class MainViewModel extends ViewModel {
         mainActivity = activity;
         mainActivity.setConnected(isConnected());
         mainActivity.setLearnEnabled(learnEnabled);
+        mainActivity.onUpdateBestAmplitude(bestAmplitude);
+        mainActivity.onUpdateTryWave(tryWave);
+        mainActivity.onUpdateBestWave(bestWave);
     }
 
     void connect(BluetoothDevice device) {

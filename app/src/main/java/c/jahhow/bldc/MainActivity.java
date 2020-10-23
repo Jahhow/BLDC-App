@@ -33,7 +33,6 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 
 public class MainActivity extends AppCompatActivity {
     static final String TAG = MainActivity.class.getSimpleName();
@@ -65,7 +64,6 @@ public class MainActivity extends AppCompatActivity {
         });
         toggle = findViewById(R.id.toggle);
         toggleECO = findViewById(R.id.toggleECO);
-        viewModel.onCreateActivity(this);
         toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -86,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
         // create a dataset and give it a type
         LineDataSet noise;
-        noise = new LineDataSet(noiseList, "Noise");
+        noise = new LineDataSet(viewModel.noiseList, "Noise");
 
         noise.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         noise.setCubicIntensity(0.2f);
@@ -197,6 +195,8 @@ public class MainActivity extends AppCompatActivity {
         data.setDrawValues(false);
         waveChart.setData(data);
         waveChart.setScaleEnabled(false);
+
+        viewModel.onCreateActivity(this);
     }
 
     @Override
@@ -284,7 +284,7 @@ public class MainActivity extends AppCompatActivity {
                     Parcelable parcelableExtra = data.getParcelableExtra(SelectMotorActivity.BT_DEVICE);
                     if (parcelableExtra instanceof BluetoothDevice) {
                         BluetoothDevice bluetoothDevice = (BluetoothDevice) parcelableExtra;
-                        setTitle(bluetoothDevice.getName());
+                        //setTitle("BLDC: " + bluetoothDevice.getName());
                         viewModel.connect(bluetoothDevice);
                     }
                 }
@@ -304,33 +304,34 @@ public class MainActivity extends AppCompatActivity {
         toggle.setChecked(enabled);
     }
 
-    @MainThread
     void disconnect() {
-        if (viewModel.socket == null) return;
-        try {
-            viewModel.socket.close();
-        } catch (IOException e) {
-            //e.printStackTrace();
-        }
-        viewModel.socket = null;
-        viewModel.outputStream = null;
-        viewModel.inputStream = null;
-        setConnected(false);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (viewModel.socket == null) return;
+                try {
+                    viewModel.socket.close();
+                } catch (IOException e) {
+                    //e.printStackTrace();
+                }
+                viewModel.socket = null;
+                viewModel.outputStream = null;
+                viewModel.inputStream = null;
+                setConnected(false);
+            }
+        });
     }
-
-    LinkedList<Entry> noiseList = new LinkedList<>();
-    int noiseDataTime = 0;
 
     void onUpdateAmplitude(int noise) {
         //txNoise.setText("Noise: " + noise);
-        if (noiseList.size() > 30)
-            noiseList.removeFirst();
-        noiseList.addLast(new Entry(noiseDataTime++, noise));
+        if (viewModel.noiseList.size() > 30)
+            viewModel.noiseList.removeFirst();
+        viewModel.noiseList.addLast(new Entry(viewModel.noiseDataTime++, noise));
 
         LineDataSet set1;
         set1 = (LineDataSet) noiseChart.getData().getDataSetByIndex(0);
         set1.notifyDataSetChanged();
-        noiseChart.getXAxis().setAxisMinimum(noiseList.getFirst().getX());
+        noiseChart.getXAxis().setAxisMinimum(viewModel.noiseList.getFirst().getX());
         onUpdateBestAmplitude(viewModel.bestAmplitude);
     }
 
@@ -338,9 +339,9 @@ public class MainActivity extends AppCompatActivity {
         //txBestNoise.setText("Best Noise: " + amp);
         float xStart = 0;
         float xFinish = 1;
-        if (noiseList.size() >= 3) {
-            xStart = noiseList.getFirst().getX();
-            xFinish = noiseList.getLast().getX();
+        if (viewModel.noiseList.size() >= 3) {
+            xStart = viewModel.noiseList.getFirst().getX();
+            xFinish = viewModel.noiseList.getLast().getX();
         }
 
         LineDataSet set1;
