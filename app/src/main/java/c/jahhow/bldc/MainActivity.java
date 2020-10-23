@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -31,6 +32,8 @@ import com.github.mikephil.charting.formatter.IFillFormatter;
 import com.github.mikephil.charting.interfaces.dataprovider.LineDataProvider;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -39,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
     static final String PATH_NAME = "/dev/null";
     static final int REQUEST_CODE_MIC = 37189;
     static final int REQUEST_CODE_START_SELECT_MOTOR_ACTIVITY = 11947;
+    static final String bestWaveFileName = "bestWave";
 
     MainViewModel viewModel;
     LineChart noiseChart;
@@ -140,15 +144,13 @@ public class MainActivity extends AppCompatActivity {
         Description waveChartDescription = new Description();
         waveChartDescription.setText("Electric Current");
         waveChart.setDescription(waveChartDescription);
-
-        ArrayList<Entry> values = new ArrayList<>(viewModel.arrSize);
-        for (int x = 0; x < viewModel.arrSize; x++) {
-            values.add(new Entry(x, viewModel.bestWave[x]));
-        }
+//        waveChart.getAxisLeft().setDrawGridLines(false);
+//        waveChart.getAxisRight().setDrawGridLines(false);
+//        waveChart.getXAxis().setDrawGridLines(false);
 
         // create a dataset and give it a type
         LineDataSet dataSetBestWave;
-        dataSetBestWave = new LineDataSet(values, "Best Wave");
+        dataSetBestWave = new LineDataSet(new ArrayList<Entry>(), "Best Wave");
 
         //dataSetBestWave.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         dataSetBestWave.setCubicIntensity(0.2f);
@@ -156,11 +158,12 @@ public class MainActivity extends AppCompatActivity {
         dataSetBestWave.setDrawCircles(false);
         dataSetBestWave.setLineWidth(1.8f);
         dataSetBestWave.setCircleRadius(4f);
-        dataSetBestWave.setCircleColor(Color.GREEN);
+        int bestWaveColor = 0xFF30DA00;
+        dataSetBestWave.setCircleColor(bestWaveColor);
         dataSetBestWave.setHighLightColor(Color.rgb(244, 117, 117));
-        dataSetBestWave.setColor(Color.GREEN);
-        dataSetBestWave.setFillColor(Color.GREEN);
-        dataSetBestWave.setFillAlpha(100);
+        dataSetBestWave.setColor(bestWaveColor);
+        dataSetBestWave.setFillColor(bestWaveColor);
+        //dataSetBestWave.setFillAlpha(100);
         dataSetBestWave.setDrawHorizontalHighlightIndicator(false);
         dataSetBestWave.setFillFormatter(new IFillFormatter() {
             @Override
@@ -170,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         LineDataSet dataSetTryWave;
-        dataSetTryWave = new LineDataSet(values, "Trying Wave");
+        dataSetTryWave = new LineDataSet(new ArrayList<Entry>(), "Trying Wave");
 
         //dataSetTryWave.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         dataSetTryWave.setCubicIntensity(0.2f);
@@ -178,11 +181,12 @@ public class MainActivity extends AppCompatActivity {
         dataSetTryWave.setDrawCircles(false);
         dataSetTryWave.setLineWidth(1.8f);
         dataSetTryWave.setCircleRadius(4f);
-        dataSetTryWave.setCircleColor(Color.RED);
+        int tryWaveColor = 0x99ff0000;
+        dataSetTryWave.setCircleColor(tryWaveColor);
         dataSetTryWave.setHighLightColor(Color.rgb(244, 117, 117));
-        dataSetTryWave.setColor(Color.RED);
-        dataSetTryWave.setFillColor(Color.RED);
-        dataSetTryWave.setFillAlpha(100);
+        dataSetTryWave.setColor(tryWaveColor);
+//        dataSetTryWave.setFillColor(tryWaveColor);
+//        dataSetTryWave.setFillAlpha(100);
         dataSetTryWave.setDrawHorizontalHighlightIndicator(false);
         dataSetTryWave.setFillFormatter(new IFillFormatter() {
             @Override
@@ -235,6 +239,7 @@ public class MainActivity extends AppCompatActivity {
             viewModel.runThr = false;
             viewModel.thr.notifyAll();
         }
+        saveBestWave();
     }
 
     @Override
@@ -250,6 +255,25 @@ public class MainActivity extends AppCompatActivity {
                         //txNoise.setText(R.string.No_Permission);
                     }*/
             }
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        saveBestWave();
+    }
+
+    void saveBestWave() {
+        try {
+            FileOutputStream f = openFileOutput(bestWaveFileName, MODE_PRIVATE);
+            f.write(viewModel.bestWave);
+            f.close();
+            Log.i(TAG, "Wave saved.");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -324,7 +348,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    void onUpdateAmplitude(int noise) {
+    void onUpdateAmplitude(float noise) {
         //txNoise.setText("Noise: " + noise);
         if (viewModel.noiseList.size() > MainViewModel.maxSizeNoiseList)
             viewModel.noiseList.removeFirst();
@@ -339,7 +363,7 @@ public class MainActivity extends AppCompatActivity {
 
     boolean toggleItBack = false;
 
-    void onUpdateBestAmplitude(int amp) {
+    void onUpdateBestAmplitude(float amp) {
         /*if (amp == 0) {
             if (toggle.isChecked()) {
                 toggle.setChecked(false);
