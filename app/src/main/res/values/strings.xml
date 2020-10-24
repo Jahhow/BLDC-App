@@ -4,4 +4,9 @@
     <string name="No_Permission">No Permission</string>
     <string name="select_motor">Select Motor</string>
     <string name="spin_period">Spin Period:\u0020</string>
+    <string-array name="BLDC_modes">
+        <item>Noise Canceling</item>
+        <item>Square Wave</item>
+        <item>Power Saving</item>
+    </string-array>
 </resources>

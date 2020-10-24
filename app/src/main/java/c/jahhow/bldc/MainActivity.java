@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
@@ -52,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
     LineChart waveChart;
     TextView txSpinPeriod;
     Switch toggle;
-    Switch toggleECO;
+    Spinner spinner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,17 +71,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         toggle = findViewById(R.id.toggle);
-        toggleECO = findViewById(R.id.toggleECO);
         toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 viewModel.learnEnabled = isChecked;
             }
         });
-        toggleECO.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+
+        spinner = findViewById(R.id.spinner);
+        final ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.BLDC_modes, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                viewModel.ecoOn = isChecked;
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                viewModel.setLearnMode(position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
             }
         });
 
@@ -285,7 +296,8 @@ public class MainActivity extends AppCompatActivity {
         synchronized (viewModel.thr) {
             MediaRecorder recorder;
             recorder = new MediaRecorder();
-            recorder.setAudioSource(MediaRecorder.AudioSource.UNPROCESSED);
+            recorder.setAudioSource(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ?
+                    MediaRecorder.AudioSource.UNPROCESSED : MediaRecorder.AudioSource.DEFAULT);
             recorder.setAudioSamplingRate(48000);
             recorder.setAudioEncodingBitRate(96000);
             recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
@@ -326,8 +338,8 @@ public class MainActivity extends AppCompatActivity {
     void setConnected(boolean connected) {
         int visibility = connected ? View.VISIBLE : View.GONE;
         txSpinPeriod.setVisibility(visibility);
+        toggle.setChecked(false);
         toggle.setVisibility(visibility);
-        toggleECO.setVisibility(visibility);
     }
 
     void setLearnEnabled(boolean enabled) {
@@ -400,24 +412,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void onUpdateBestWave(byte[] wave) {
-        updateWave(wave, 0);
+        updateWave(wave, 0, 0);
     }
 
-    void onUpdateTryWave(byte[] wave) {
-        updateWave(wave, 1);
+    void onUpdateTryWave(byte[] wave, int learnMode) {
+        updateWave(wave, 1, learnMode);
     }
 
-    private void updateWave(byte[] wave, int dataSetIndex) {
-        ArrayList<Entry> values = new ArrayList<>(wave.length);
-        for (int x = 0; x < wave.length; x++) {
-            values.add(new Entry(x, wave[x]));
-        }
-
-        LineDataSet set1;
-        set1 = (LineDataSet) waveChart.getData().getDataSetByIndex(dataSetIndex);
-        set1.setValues(values);
-        waveChart.getData().notifyDataChanged();
-        waveChart.notifyDataSetChanged();
-        waveChart.invalidate();
+    private void updateWave(final byte[] wave, final int dataSetIndex, final int learnMode) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (learnMode != viewModel.learnMode)
+                    return;
+                final ArrayList<Entry> values = new ArrayList<>(wave.length);
+                for (int x = 0; x < wave.length; x++) {
+                    values.add(new Entry(x, wave[x]));
+                }
+                LineDataSet set1;
+                set1 = (LineDataSet) waveChart.getData().getDataSetByIndex(dataSetIndex);
+                set1.setValues(values);
+                waveChart.getData().notifyDataChanged();
+                waveChart.notifyDataSetChanged();
+                waveChart.invalidate();
+            }
+        });
     }
 }
