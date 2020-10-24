@@ -35,8 +35,8 @@ public class MainViewModel extends ViewModel {
     byte[] tryWave = new byte[arrSize];
     int spinPeriod = -1;
     int targetPeriod = 27;
-    float sentMinDb = Float.MAX_VALUE;
     float minDb = Float.MAX_VALUE;
+    float tempMinDb = Float.MAX_VALUE;
     static final int numAmpSample = 80;
     int countNumSample = 0;
     float bestDb = 0;
@@ -44,7 +44,10 @@ public class MainViewModel extends ViewModel {
     boolean learnEnabled = false;
     boolean ecoOn = false;
     boolean sendBestWave = true;
-    int tryBias = 0;
+    int biasFixPeriod = 0;
+    int tryIndex = 0;
+    int nTimesTriedCurIndex = 0;
+    static final int nTryPerIndex = 6;
 
     static final int maxSizeNoiseList = 1000;
     LinkedList<Entry> noiseList = new LinkedList<>();
@@ -88,17 +91,17 @@ public class MainViewModel extends ViewModel {
                                     mainActivity.onUpdateAmplitude(db);
                                 }
                             });
-                            if (db < minDb)
-                                minDb = db;
+                            if (db < tempMinDb)
+                                tempMinDb = db;
                             ++countNumSample;
                             if (countNumSample >= numAmpSample) {
-                                sentMinDb = minDb;
+                                minDb = tempMinDb;
                                 countNumSample = 0;
-                                minDb = Float.MAX_VALUE;
+                                tempMinDb = Float.MAX_VALUE;
                                 if (learnEnabled) {
-                                    if (spinPeriod == targetPeriod && sentMinDb < bestDb) {
+                                    if (spinPeriod == targetPeriod && minDb < bestDb) {
                                         //new best wave found
-                                        bestDb = sentMinDb;
+                                        bestDb = minDb;
                                         System.arraycopy(tryWave, 0, bestWave, 0, arrSize);
                                         mainActivity.runOnUiThread(new Runnable() {
                                             @Override
@@ -107,17 +110,31 @@ public class MainViewModel extends ViewModel {
                                                 mainActivity.onUpdateBestNoise(bestDb);
                                             }
                                         });
-                                        tryBias = 0;
+                                        biasFixPeriod = 0;
                                     } else if (spinPeriod >= 0) {
                                         if (spinPeriod < targetPeriod) {
-                                            --tryBias;
+                                            --biasFixPeriod;
                                         } else if (spinPeriod > targetPeriod) {
-                                            ++tryBias;
+                                            ++biasFixPeriod;
                                         }
                                     }
-                                    for (int i = 0; i < arrSize; ++i) {
+                                    /*for (int i = 0; i < arrSize; ++i) {
                                         tryWave[i] = (byte) ((int) bestWave[i] + tryBias + random.nextInt(9) - 4);// += rand( -4 ~ 4 )
+                                    }*/
+
+                                    for (int i = 0; i < arrSize; ++i) {
+                                        tryWave[i] = (byte) ((int) bestWave[i] + biasFixPeriod);
                                     }
+                                    int randAddition = random.nextInt(8) - 4;
+                                    if (randAddition >= 0) randAddition++;
+                                    tryWave[tryIndex] = (byte) ((int) tryWave[tryIndex] + randAddition);
+                                    if (nTimesTriedCurIndex < nTryPerIndex) {
+                                        nTimesTriedCurIndex++;
+                                    } else {
+                                        tryIndex = (tryIndex + 1) % arrSize;
+                                        nTimesTriedCurIndex = 0;
+                                    }
+
                                     mainActivity.runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {
@@ -147,7 +164,7 @@ public class MainViewModel extends ViewModel {
                                         }
                                         sendBestWave = false;
                                     }
-                                    bestDb = sentMinDb;
+                                    bestDb = minDb;
                                     mainActivity.runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {

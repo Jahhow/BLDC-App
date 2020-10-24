@@ -10,8 +10,11 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 
@@ -185,6 +188,7 @@ public class MainActivity extends AppCompatActivity {
         dataSetTryWave.setCircleColor(tryWaveColor);
         dataSetTryWave.setHighLightColor(Color.rgb(244, 117, 117));
         dataSetTryWave.setColor(tryWaveColor);
+        dataSetTryWave.setDrawFilled(false);
 //        dataSetTryWave.setFillColor(tryWaveColor);
 //        dataSetTryWave.setFillAlpha(100);
         dataSetTryWave.setDrawHorizontalHighlightIndicator(false);
@@ -281,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
         synchronized (viewModel.thr) {
             MediaRecorder recorder;
             recorder = new MediaRecorder();
-            recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+            recorder.setAudioSource(MediaRecorder.AudioSource.UNPROCESSED);
             recorder.setAudioSamplingRate(48000);
             recorder.setAudioEncodingBitRate(96000);
             recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
