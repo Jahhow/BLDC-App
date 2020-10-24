@@ -158,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
         dataSetBestWave.setDrawCircles(false);
         dataSetBestWave.setLineWidth(1.8f);
         dataSetBestWave.setCircleRadius(4f);
-        int bestWaveColor = 0xFF30DA00;
+        int bestWaveColor = 0xFF50DA00;
         dataSetBestWave.setCircleColor(bestWaveColor);
         dataSetBestWave.setHighLightColor(Color.rgb(244, 117, 117));
         dataSetBestWave.setColor(bestWaveColor);
@@ -358,13 +358,11 @@ public class MainActivity extends AppCompatActivity {
         set1 = (LineDataSet) noiseChart.getData().getDataSetByIndex(0);
         set1.notifyDataSetChanged();
         noiseChart.getXAxis().setAxisMinimum(viewModel.noiseList.getFirst().getX());
-        onUpdateBestAmplitude(viewModel.bestAmplitude);
+        onUpdateBestNoise(viewModel.bestDb);
     }
 
-    boolean toggleItBack = false;
-
-    void onUpdateBestAmplitude(float amp) {
-        /*if (amp == 0) {
+    void onUpdateBestNoise(float noise) {
+        /*if (noise == 0) {
             if (toggle.isChecked()) {
                 toggle.setChecked(false);
                 toggleItBack = true;
@@ -386,8 +384,8 @@ public class MainActivity extends AppCompatActivity {
         LineDataSet set1;
         set1 = (LineDataSet) noiseChart.getData().getDataSetByIndex(1);
         set1.clear();
-        set1.addEntry(new Entry(xStart, amp));
-        set1.addEntry(new Entry(xFinish, amp));
+        set1.addEntry(new Entry(xStart, noise));
+        set1.addEntry(new Entry(xFinish, noise));
         noiseChart.getData().notifyDataChanged();
         noiseChart.notifyDataSetChanged();
         noiseChart.invalidate();

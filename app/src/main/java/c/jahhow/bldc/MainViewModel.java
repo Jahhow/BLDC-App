@@ -35,11 +35,11 @@ public class MainViewModel extends ViewModel {
     byte[] tryWave = new byte[arrSize];
     int spinPeriod = -1;
     int targetPeriod = 27;
-    float amplitude = Float.MAX_VALUE;
-    float minAmp = 0;
+    float sentMinDb = Float.MAX_VALUE;
+    float minDb = Float.MAX_VALUE;
     static final int numAmpSample = 80;
     int countNumSample = 0;
-    float bestAmplitude = 0;
+    float bestDb = 0;
     Random random = new Random();
     boolean learnEnabled = false;
     boolean ecoOn = false;
@@ -80,7 +80,7 @@ public class MainViewModel extends ViewModel {
                     else {
                         timeoutMs = 20;
                         final float amp = recorder.getMaxAmplitude();
-                        if (amp != 0) {
+                        if (amp > 0) {
                             final float db = (float) (20 * Math.log10(amp));
                             mainActivity.runOnUiThread(new Runnable() {
                                 @Override
@@ -88,23 +88,23 @@ public class MainViewModel extends ViewModel {
                                     mainActivity.onUpdateAmplitude(db);
                                 }
                             });
-                            if (db < minAmp)
-                                minAmp = db;
+                            if (db < minDb)
+                                minDb = db;
                             ++countNumSample;
                             if (countNumSample >= numAmpSample) {
-                                amplitude = minAmp;
+                                sentMinDb = minDb;
                                 countNumSample = 0;
-                                minAmp = Integer.MAX_VALUE;
+                                minDb = Float.MAX_VALUE;
                                 if (learnEnabled) {
-                                    if (spinPeriod == targetPeriod && amplitude < bestAmplitude) {
+                                    if (spinPeriod == targetPeriod && sentMinDb < bestDb) {
                                         //new best wave found
-                                        bestAmplitude = amplitude;
+                                        bestDb = sentMinDb;
                                         System.arraycopy(tryWave, 0, bestWave, 0, arrSize);
                                         mainActivity.runOnUiThread(new Runnable() {
                                             @Override
                                             public void run() {
                                                 mainActivity.onUpdateBestWave(bestWave);
-                                                mainActivity.onUpdateBestAmplitude(bestAmplitude);
+                                                mainActivity.onUpdateBestNoise(bestDb);
                                             }
                                         });
                                         tryBias = 0;
@@ -147,11 +147,11 @@ public class MainViewModel extends ViewModel {
                                         }
                                         sendBestWave = false;
                                     }
-                                    bestAmplitude = amplitude;
+                                    bestDb = sentMinDb;
                                     mainActivity.runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {
-                                            mainActivity.onUpdateBestAmplitude(bestAmplitude);
+                                            mainActivity.onUpdateBestNoise(bestDb);
                                         }
                                     });
                                 }
@@ -190,17 +190,15 @@ public class MainViewModel extends ViewModel {
             boolean readSuccess = false;
             try {
                 FileInputStream f = activity.openFileInput(MainActivity.bestWaveFileName);
-                f.read(bestWave, 0, bestWave.length);
-                readSuccess = true;
+                if (f.read(bestWave, 0, bestWave.length) == bestWave.length)
+                    readSuccess = true;
             } catch (FileNotFoundException e) {
                 //e.printStackTrace();
             } catch (IOException e) {
                 //e.printStackTrace();
             }
             if (readSuccess) {
-                for (int i = 0; i < arrSize; ++i) {
-                    tryWave[i] = bestWave[i];
-                }
+                System.arraycopy(bestWave, 0, tryWave, 0, arrSize);
             } else {
                 for (int i = 0; i < arrSize; ++i) {
                     bestWave[i] = initDuty;
@@ -210,7 +208,7 @@ public class MainViewModel extends ViewModel {
         }
         activity.setConnected(isConnected());
         activity.setLearnEnabled(learnEnabled);
-        activity.onUpdateBestAmplitude(bestAmplitude);
+        activity.onUpdateBestNoise(bestDb);
         activity.onUpdateTryWave(tryWave);
         activity.onUpdateBestWave(bestWave);
     }
