@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.UUID;
@@ -32,6 +33,7 @@ public class MainViewModel extends ViewModel {
     byte squareWaveDuty = 80;
     static final int arrSize = 32;
     boolean getBestWave = true;
+    byte[] bestNoiseCancelingWave = new byte[arrSize];
     byte[] bestWave = new byte[arrSize];
     byte[] tryWave = new byte[arrSize];
     int spinPeriod = -1;
@@ -52,10 +54,13 @@ public class MainViewModel extends ViewModel {
     static final int maxSizeNoiseList = 1000;
     LinkedList<Entry> noiseList = new LinkedList<>();
     int noiseDataTime = 0;
-    int mosOnLength = 10;
+    int mosOnLength = 5;
     int firstOnIndex = 0;
+    int tryingMosOnLengthFixPeriod = 0;
     int tryingMosOnLength = mosOnLength;
     int tryingFirstOnIndex = firstOnIndex;
+    int learnBias = 0;
+    boolean newBestWaveFound = false;
 //    float smoothFactor = .3f;
 //    float smoothedDb = 0;
 
@@ -115,7 +120,7 @@ public class MainViewModel extends ViewModel {
                                                 mainActivity.runOnUiThread(new Runnable() {
                                                     @Override
                                                     public void run() {
-                                                        mainActivity.onUpdateBestWave(bestWave);
+                                                        mainActivity.onUpdateBestWave(bestWave, 0);
                                                         mainActivity.onUpdateBestNoise(bestDb);
                                                     }
                                                 });
@@ -144,26 +149,11 @@ public class MainViewModel extends ViewModel {
                                                 nTimesTriedCurIndex = 0;
                                             }
                                             mainActivity.onUpdateTryWave(tryWave, 0);
-                                            try {
-                                                final OutputStream outputStream1 = outputStream;
-                                                if (outputStream1 != null) {
-                                                    //outputStream.write(91543278);
-                                                    outputStream1.write(tryWave);
-                                                }
-                                            } catch (IOException e) {
-                                                mainActivity.disconnect();
-                                            }
+                                            sendWave(tryWave);
                                             sendBestWave = true;
                                         } else {
                                             if (sendBestWave) {
-                                                try {
-                                                    final OutputStream outputStream1 = outputStream;
-                                                    if (outputStream1 != null) {
-                                                        outputStream1.write(bestWave);
-                                                    }
-                                                } catch (IOException e) {
-                                                    mainActivity.disconnect();
-                                                }
+                                                sendWave(bestWave);
                                                 sendBestWave = false;
                                             }
                                             bestDb = minDb;
@@ -191,33 +181,54 @@ public class MainViewModel extends ViewModel {
                                                 for (int i = 0; i < arrSize; ++i) {
                                                     tryWave[i] = squareWaveDuty;
                                                 }
-                                                try {
-                                                    final OutputStream outputStream1 = outputStream;
-                                                    if (outputStream1 != null) {
-                                                        //outputStream.write(91543278);
-                                                        outputStream1.write(tryWave);
-                                                    }
-                                                } catch (IOException e) {
-                                                    mainActivity.disconnect();
-                                                }
+                                                sendWave(tryWave);
                                                 mainActivity.onUpdateTryWave(tryWave, 1);
                                             }
                                         }
                                         break;
                                     case 2://Power Saving
-                                        /*if (learnEnabled) {
-                                            int i;
-                                            for (i = 0; i < tryingFirstOnIndex; ++i) {
-                                                tryWave[i] = 0;
+                                        if (learnEnabled) {
+                                            if (spinPeriod == targetPeriod) {
+                                                if (tryingMosOnLength < mosOnLength) {
+                                                    newBestWaveFound = true;
+                                                    mosOnLength = tryingMosOnLength;
+                                                    firstOnIndex = tryingFirstOnIndex;
+                                                } else {
+                                                    newBestWaveFound = false;
+                                                }
+                                            } else if (spinPeriod < targetPeriod && spinPeriod >= 0) {
+                                                newBestWaveFound = true;
+                                                mosOnLength = --tryingMosOnLength;
+                                                firstOnIndex = tryingFirstOnIndex;
+                                            } else {
+                                                newBestWaveFound = false;
+                                                tryingMosOnLength++;
                                             }
+                                            if (newBestWaveFound) {
+                                                System.arraycopy(tryWave, 0, bestWave, 0, arrSize);
+                                                mainActivity.onUpdateBestWave(bestWave, 2);
+                                            } else {
+                                                learnBias = random.nextInt(6) - 3;
+                                                if (learnBias >= 0)
+                                                    learnBias++;
+                                            }
+                                            tryingFirstOnIndex = firstOnIndex + learnBias;
+                                            if (tryingFirstOnIndex < 0) tryingFirstOnIndex = 0;
+                                            if (tryingFirstOnIndex >= arrSize)
+                                                tryingFirstOnIndex = arrSize - 1;
                                             int offFirstIndex = tryingFirstOnIndex + tryingMosOnLength;
-                                            for (; i < offFirstIndex; ++i) {
-                                                tryWave[i] = (byte) 255;
+                                            if (offFirstIndex > arrSize)
+                                                tryingMosOnLength = arrSize - tryingFirstOnIndex;
+                                            setupEcoWave(tryWave, tryingMosOnLength, tryingFirstOnIndex);
+
+                                            sendWave(tryWave);
+                                            mainActivity.onUpdateTryWave(tryWave, 2);
+                                        } else {
+                                            if (sendBestWave) {
+                                                sendWave(bestWave);
+                                                sendBestWave = false;
                                             }
-                                            for (; i < arrSize; ++i) {
-                                                tryWave[i] = 0;
-                                            }
-                                        }*/
+                                        }
                                         break;
                                 }
                             }
@@ -245,19 +256,60 @@ public class MainViewModel extends ViewModel {
         return socket != null && socket.isConnected();
     }
 
+    static void setupEcoWave(byte[] wave, int mosOnLength, int firstOnIndex) {
+        int i;
+        for (i = 0; i < firstOnIndex; ++i) {
+            wave[i] = 0;
+        }
+        int offFirstIndex = firstOnIndex + mosOnLength;
+        for (; i < offFirstIndex; ++i) {
+            wave[i] = (byte) 255;
+        }
+        for (; i < arrSize; ++i) {
+            wave[i] = 0;
+        }
+    }
+
     void setLearnMode(int learnMode) {
-        this.learnMode = learnMode;
-        switch (learnMode) {
-            case 0:// Noise canceling
-                break;
-            case 1://Square wave
-                for (int i = 0; i < MainViewModel.arrSize; ++i) {
-                    tryWave[i] = squareWaveDuty;
-                }
-                mainActivity.onUpdateTryWave(tryWave, 1);
-                break;
-            case 2:
-                break;
+        synchronized (thr) {
+            this.learnMode = learnMode;
+            switch (learnMode) {
+                case 0:// Noise canceling
+                    System.arraycopy(bestNoiseCancelingWave, 0, tryWave, 0, arrSize);
+                    System.arraycopy(bestNoiseCancelingWave, 0, bestWave, 0, arrSize);
+                    mainActivity.onUpdateTryWave(tryWave, 0);
+                    mainActivity.onUpdateBestWave(bestWave, 0);
+                    sendWave(tryWave);
+                    break;
+                case 1://Square wave
+                    for (int i = 0; i < MainViewModel.arrSize; ++i) {
+                        tryWave[i] = squareWaveDuty;
+                    }
+                    mainActivity.onUpdateTryWave(tryWave, 1);
+                    sendWave(tryWave);
+                    break;
+                case 2:
+                    setupEcoWave(bestWave, mosOnLength, firstOnIndex);
+                    setupEcoWave(tryWave, tryingMosOnLength, tryingFirstOnIndex);
+                    Log.i(TAG, Arrays.toString(bestWave));
+                    Log.i(TAG, Arrays.toString(tryWave));
+                    mainActivity.onUpdateBestWave(bestWave, 2);
+                    mainActivity.onUpdateTryWave(tryWave, 2);
+                    sendWave(bestWave);
+                    break;
+            }
+            sendBestWave = true;
+        }
+    }
+
+    void sendWave(byte[] wave) {
+        try {
+            final OutputStream o = outputStream;
+            if (o != null) {
+                o.write(wave);
+            }
+        } catch (IOException e) {
+            mainActivity.disconnect();
         }
     }
 
@@ -280,10 +332,12 @@ public class MainViewModel extends ViewModel {
             }
             if (readSuccess) {
                 System.arraycopy(bestWave, 0, tryWave, 0, arrSize);
+                System.arraycopy(bestWave, 0, bestNoiseCancelingWave, 0, arrSize);
             } else {
                 for (int i = 0; i < arrSize; ++i) {
                     bestWave[i] = squareWaveDuty;
                     tryWave[i] = squareWaveDuty;
+                    bestNoiseCancelingWave[i] = squareWaveDuty;
                 }
             }
         }
@@ -291,7 +345,7 @@ public class MainViewModel extends ViewModel {
         activity.setLearnEnabled(learnEnabled);
         activity.onUpdateBestNoise(bestDb);
         activity.onUpdateTryWave(tryWave, learnMode);
-        activity.onUpdateBestWave(bestWave);
+        activity.onUpdateBestWave(bestWave, learnMode);
         activity.spinner.setSelection(learnMode);
     }
 

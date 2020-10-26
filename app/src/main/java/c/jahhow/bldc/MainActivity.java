@@ -40,6 +40,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     static final String TAG = MainActivity.class.getSimpleName();
@@ -158,6 +159,7 @@ public class MainActivity extends AppCompatActivity {
         Description waveChartDescription = new Description();
         waveChartDescription.setText("Electric Current");
         waveChart.setDescription(waveChartDescription);
+        waveChart.setAutoScaleMinMaxEnabled(true);
 //        waveChart.getAxisLeft().setDrawGridLines(false);
 //        waveChart.getAxisRight().setDrawGridLines(false);
 //        waveChart.getXAxis().setDrawGridLines(false);
@@ -179,12 +181,12 @@ public class MainActivity extends AppCompatActivity {
         dataSetBestWave.setFillColor(bestWaveColor);
         //dataSetBestWave.setFillAlpha(100);
         dataSetBestWave.setDrawHorizontalHighlightIndicator(false);
-        dataSetBestWave.setFillFormatter(new IFillFormatter() {
+        /*dataSetBestWave.setFillFormatter(new IFillFormatter() {
             @Override
             public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
                 return waveChart.getAxisLeft().getAxisMinimum();
             }
-        });
+        });*/
 
         LineDataSet dataSetTryWave;
         dataSetTryWave = new LineDataSet(new ArrayList<Entry>(), "Trying Wave");
@@ -203,12 +205,12 @@ public class MainActivity extends AppCompatActivity {
 //        dataSetTryWave.setFillColor(tryWaveColor);
 //        dataSetTryWave.setFillAlpha(100);
         dataSetTryWave.setDrawHorizontalHighlightIndicator(false);
-        dataSetTryWave.setFillFormatter(new IFillFormatter() {
+        /*dataSetTryWave.setFillFormatter(new IFillFormatter() {
             @Override
             public float getFillLinePosition(ILineDataSet dataSet, LineDataProvider dataProvider) {
                 return waveChart.getAxisLeft().getAxisMinimum();
             }
-        });
+        });*/
 
         // create a data object with the data sets
         LineData data = new LineData(dataSetBestWave, dataSetTryWave);
@@ -251,6 +253,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         if (isChangingConfigurations()) return;
         synchronized (viewModel.thr) {
+            disconnect();
             viewModel.runThr = false;
             viewModel.thr.notifyAll();
         }
@@ -282,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
     void saveBestWave() {
         try {
             FileOutputStream f = openFileOutput(bestWaveFileName, MODE_PRIVATE);
-            f.write(viewModel.bestWave);
+            f.write(viewModel.learnMode == 0 ? viewModel.bestWave : viewModel.bestNoiseCancelingWave);
             f.close();
             Log.i(TAG, "Wave saved.");
         } catch (FileNotFoundException e) {
@@ -411,8 +414,8 @@ public class MainActivity extends AppCompatActivity {
         txSpinPeriod.setText(getString(R.string.spin_period) + spinPeriod);
     }
 
-    void onUpdateBestWave(byte[] wave) {
-        updateWave(wave, 0, 0);
+    void onUpdateBestWave(byte[] wave, int learnMode) {
+        updateWave(wave, 0, learnMode);
     }
 
     void onUpdateTryWave(byte[] wave, int learnMode) {
@@ -425,17 +428,35 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 if (learnMode != viewModel.learnMode)
                     return;
-                final ArrayList<Entry> values = new ArrayList<>(wave.length);
+                LineDataSet set1;
+                set1 = (LineDataSet) waveChart.getData().getDataSetByIndex(dataSetIndex);
+                if (set1.getEntryCount() != MainViewModel.arrSize) {
+                    ArrayList<Entry> values = new ArrayList<>(MainViewModel.arrSize);
+                    for (int x = 0; x < wave.length; x++) {
+                        values.add(new Entry(x, toUnsignedInt(wave[x])));
+                    }
+                    set1.setValues(values);
+                } else {
+                    List<Entry> values = set1.getValues();
+                    for (int x = 0; x < wave.length; x++) {
+                        values.get(x).setY(toUnsignedInt(wave[x]));
+                    }
+                }
+                /*final ArrayList<Entry> values = new ArrayList<>(wave.length);
                 for (int x = 0; x < wave.length; x++) {
                     values.add(new Entry(x, wave[x]));
                 }
                 LineDataSet set1;
                 set1 = (LineDataSet) waveChart.getData().getDataSetByIndex(dataSetIndex);
-                set1.setValues(values);
+                set1.setValues(values);*/
                 waveChart.getData().notifyDataChanged();
                 waveChart.notifyDataSetChanged();
                 waveChart.invalidate();
             }
         });
+    }
+
+    static int toUnsignedInt(byte a) {
+        return ((int) a) & 0xff;
     }
 }
